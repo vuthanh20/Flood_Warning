@@ -1,0 +1,7 @@
+# Bỏ qua các thư mục build của ESP-IDF
+build/
+Firmware/*/build/
+Firmware/*/*/build/
+
+# Bỏ qua các file cấu hình cũ
+sdkconfig.old

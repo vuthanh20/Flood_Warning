@@ -1,0 +1,294 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Monitoring Dashboard</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#151622] text-[#8E8F9F] min-h-screen flex antialiased">
+
+    <aside class="w-64 bg-[#212233] m-5 mr-0 rounded-[1.5rem] hidden md:flex flex-col shrink-0 relative z-30 shadow-2xl">
+        <div class="h-28 flex items-center justify-center shrink-0">
+            <span class="text-3xl font-medium tracking-tight text-white">FLOOD</span>
+        </div>
+        
+        <div class="flex-1 overflow-y-auto py-2 px-0 space-y-1" id="nav-menu">
+            <a href="#" data-target="dashboard-view" class="nav-link flex items-center gap-4 px-10 py-4 text-base text-white relative hover:bg-white/5 transition-colors group active-nav">
+                <i data-lucide="layout-grid" class="w-6 h-6 text-[#6B4DFF] nav-icon" stroke-width="1.5"></i> 
+                <span data-i18n="nav-dashboard">Dashboard</span>
+                <div class="nav-indicator absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#6B4DFF] rounded-l-full transition-opacity opacity-100"></div>
+            </a>
+            
+            <a href="#" data-target="node-map-view" class="nav-link flex items-center gap-4 px-10 py-4 text-base text-[#8E8F9F] relative hover:bg-white/5 transition-colors group">
+                <iconify-icon icon="solar:map-point-linear" class="text-2xl transition-colors nav-icon"></iconify-icon> 
+                <span data-i18n="nav-map">Node Map</span>
+                <div class="nav-indicator absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#6B4DFF] rounded-l-full transition-opacity opacity-0"></div>
+            </a>
+
+            <a href="#" data-target="history-view" class="nav-link flex items-center gap-4 px-10 py-4 text-base text-[#8E8F9F] relative hover:bg-white/5 transition-colors group">
+                <i data-lucide="book-open" class="w-6 h-6 transition-colors nav-icon" stroke-width="1.5"></i> 
+                <span data-i18n="nav-history">History</span>
+                <div class="nav-indicator absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#6B4DFF] rounded-l-full transition-opacity opacity-0"></div>
+            </a>
+        </div>
+
+        <div class="p-6 shrink-0 mt-auto">
+            <a href="#" data-target="settings-view" class="nav-link flex items-center gap-4 px-4 py-3 text-base text-[#8E8F9F] hover:bg-white/5 rounded-xl transition-colors group mt-1 relative">
+                <i data-lucide="settings" class="w-6 h-6 transition-colors nav-icon" stroke-width="1.5"></i> 
+                <span data-i18n="nav-settings">Settings</span>
+                <div class="nav-indicator absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[#6B4DFF] rounded-l-full transition-opacity opacity-0"></div>
+            </a>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <header class="h-28 px-6 lg:px-10 flex items-center justify-between shrink-0">
+            <div class="flex-1 flex items-center"></div>
+            
+            <div class="flex items-center gap-4 pl-6">
+                <div class="relative hidden lg:block">
+                    <select id="province-select" class="appearance-none bg-[#212233] text-white pl-4 pr-10 py-2.5 rounded-full text-sm font-medium outline-none cursor-pointer shadow-sm border border-white/5 focus:border-[#6B4DFF]/50 transition-colors w-48 max-h-48 overflow-y-auto">
+                        <option value="all" data-i18n="opt-all-prov">All Provinces</option>
+                        <option value="An Giang">An Giang</option>
+                        <option value="Bà Rịa - Vũng Tàu">Bà Rịa - Vũng Tàu</option>
+                        <option value="Bắc Giang">Bắc Giang</option>
+                        <option value="Bắc Kạn">Bắc Kạn</option>
+                        <option value="Bạc Liêu">Bạc Liêu</option>
+                        <option value="Bắc Ninh">Bắc Ninh</option>
+                        <option value="Bến Tre">Bến Tre</option>
+                        <option value="Bình Định">Bình Định</option>
+                        <option value="Bình Dương">Bình Dương</option>
+                        <option value="Bình Phước">Bình Phước</option>
+                        <option value="Bình Thuận">Bình Thuận</option>
+                        <option value="Cà Mau">Cà Mau</option>
+                        <option value="Cần Thơ">Cần Thơ</option>
+                        <option value="Cao Bằng">Cao Bằng</option>
+                        <option value="Đà Nẵng">Đà Nẵng</option>
+                        <option value="Đắk Lắk">Đắk Lắk</option>
+                        <option value="Đắk Nông">Đắk Nông</option>
+                        <option value="Điện Biên">Điện Biên</option>
+                        <option value="Đồng Nai">Đồng Nai</option>
+                        <option value="Đồng Tháp">Đồng Tháp</option>
+                        <option value="Gia Lai">Gia Lai</option>
+                        <option value="Hà Giang">Hà Giang</option>
+                        <option value="Hà Nam">Hà Nam</option>
+                        <option value="Hà Nội" selected>Hà Nội</option>
+                        <option value="Hà Tĩnh">Hà Tĩnh</option>
+                        <option value="Hải Dương">Hải Dương</option>
+                        <option value="Hải Phòng">Hải Phòng</option>
+                        <option value="Hậu Giang">Hậu Giang</option>
+                        <option value="Hòa Bình">Hòa Bình</option>
+                        <option value="Hưng Yên">Hưng Yên</option>
+                        <option value="Khánh Hòa">Khánh Hòa</option>
+                        <option value="Kiên Giang">Kiên Giang</option>
+                        <option value="Kon Tum">Kon Tum</option>
+                        <option value="Lai Châu">Lai Châu</option>
+                        <option value="Lâm Đồng">Lâm Đồng</option>
+                        <option value="Lạng Sơn">Lạng Sơn</option>
+                        <option value="Lào Cai">Lào Cai</option>
+                        <option value="Long An">Long An</option>
+                        <option value="Nam Định">Nam Định</option>
+                        <option value="Nghệ An">Nghệ An</option>
+                        <option value="Ninh Bình">Ninh Bình</option>
+                        <option value="Ninh Thuận">Ninh Thuận</option>
+                        <option value="Phú Thọ">Phú Thọ</option>
+                        <option value="Phú Yên">Phú Yên</option>
+                        <option value="Quảng Bình">Quảng Bình</option>
+                        <option value="Quảng Nam">Quảng Nam</option>
+                        <option value="Quảng Ngãi">Quảng Ngãi</option>
+                        <option value="Quảng Ninh">Quảng Ninh</option>
+                        <option value="Quảng Trị">Quảng Trị</option>
+                        <option value="Sóc Trăng">Sóc Trăng</option>
+                        <option value="Sơn La">Sơn La</option>
+                        <option value="Tây Ninh">Tây Ninh</option>
+                        <option value="Thái Bình">Thái Bình</option>
+                        <option value="Thái Nguyên">Thái Nguyên</option>
+                        <option value="Thanh Hóa">Thanh Hóa</option>
+                        <option value="Thừa Thiên Huế">Thừa Thiên Huế</option>
+                        <option value="Tiền Giang">Tiền Giang</option>
+                        <option value="TP Hồ Chí Minh">TP Hồ Chí Minh</option>
+                        <option value="Trà Vinh">Trà Vinh</option>
+                        <option value="Tuyên Quang">Tuyên Quang</option>
+                        <option value="Vĩnh Long">Vĩnh Long</option>
+                        <option value="Vĩnh Phúc">Vĩnh Phúc</option>
+                        <option value="Yên Bái">Yên Bái</option>
+                    </select>
+                    <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
+                </div>
+
+                <div class="relative hidden sm:block">
+                    <select id="node-select" class="appearance-none bg-[#212233] text-white pl-4 pr-10 py-2.5 rounded-full text-sm font-medium outline-none cursor-pointer shadow-sm border border-white/5 focus:border-[#6B4DFF]/50 transition-colors w-32">
+                    </select>
+                    <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
+                </div>
+
+                <div class="relative hidden sm:block">
+                    <select id="lang-switch" class="appearance-none bg-[#212233] text-white pl-4 pr-10 py-2.5 rounded-full text-sm font-medium outline-none cursor-pointer shadow-sm border border-white/5 focus:border-[#6B4DFF]/50 transition-colors">
+                        <option value="en" data-i18n="lang-en">English</option>
+                        <option value="vi" data-i18n="lang-vi">Vietnamese</option>
+                    </select>
+                    <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
+                </div>
+
+                <div class="w-11 h-11 rounded-full bg-[#212233] overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ml-2 border border-white/5 flex items-center justify-center">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Flag_of_Vietnam.svg" alt="VN Flag" class="w-full h-full object-cover">
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto px-6 lg:px-10 pb-10">
+            <div class="max-w-[1600px] mx-auto relative h-full">
+                
+                <div id="dashboard-view" class="view-section block">
+                    <h1 class="text-3xl font-medium tracking-tight text-white mb-8" data-i18n="title-dashboard">Dashboard</h1>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
+                            <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
+                                <i data-lucide="triangle-alert" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-alerts-val">0</div>
+                                <div class="text-base text-[#8E8F9F]" data-i18n="kpi-alerts">Active Alerts</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
+                            <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
+                                <i data-lucide="waves" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-water-val">0</div>
+                                <div class="text-base text-[#8E8F9F]" data-i18n="kpi-water">Avg Water Level</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
+                            <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
+                                <i data-lucide="cloud-rain" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5">-- mm</div>
+                                <div class="text-base text-[#8E8F9F]" data-i18n="kpi-rain">24h Rainfall</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
+                            <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
+                                <i data-lucide="cpu" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                            </div>
+                            <div>
+                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-sensors-val">0</div>
+                                <div class="text-base text-[#8E8F9F]" data-i18n="kpi-sensors">Active Sensors</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex flex-col shadow-sm w-full">
+                            <div class="flex items-center justify-between mb-8">
+                                <h2 class="text-base font-medium text-white" data-i18n="chart-title">Water Level Trends</h2>
+                                
+                                <div class="relative">
+                                    <select id="chart-time-select" class="appearance-none bg-[#151622] text-white pl-4 pr-10 py-2.5 rounded-full text-sm font-medium outline-none cursor-pointer shadow-inner border border-white/5 focus:border-[#6B4DFF]/50 transition-colors w-32">
+                                        <option value="12h" data-i18n="chart-12h">12 hours</option>
+                                        <option value="24h" data-i18n="chart-24h" selected>24 hours</option>
+                                        <option value="1w" data-i18n="chart-1w">1 week</option>
+                                        <option value="1m" data-i18n="chart-1m">1 month</option>
+                                    </select>
+                                    <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 min-h-[350px] relative mt-auto mb-4 pl-8">
+                                <div class="absolute inset-0 flex flex-col justify-between pointer-events-none pl-8">
+                                    <div class="border-t border-dashed border-[#8E8F9F]/20 w-full relative h-0"><span id="y-label-4" class="absolute -top-3 -left-10 text-sm text-[#8E8F9F]">6m</span></div>
+                                    <div class="border-t border-dashed border-[#8E8F9F]/20 w-full relative h-0"><span id="y-label-3" class="absolute -top-3 -left-10 text-sm text-[#8E8F9F]">4m</span></div>
+                                    <div class="border-t border-dashed border-[#8E8F9F]/20 w-full relative h-0"><span id="y-label-2" class="absolute -top-3 -left-10 text-sm text-[#8E8F9F]">2m</span></div>
+                                    <div class="border-t border-dashed border-[#8E8F9F]/20 w-full relative h-0"><span class="absolute -top-3 -left-10 text-sm text-[#8E8F9F]">0m</span></div>
+                                </div>
+                                <div class="absolute inset-0 flex justify-between pointer-events-none pl-8">
+                                    <div class="border-l border-dashed border-[#8E8F9F]/10 h-full"></div>
+                                    <div class="border-l border-dashed border-[#8E8F9F]/10 h-full"></div>
+                                    <div class="border-l border-dashed border-[#8E8F9F]/10 h-full"></div>
+                                    <div class="border-l border-dashed border-[#8E8F9F]/10 h-full"></div>
+                                    <div class="border-l border-dashed border-[#8E8F9F]/10 h-full"></div>
+                                </div>
+                                
+                                <div class="absolute inset-0 ml-8 top-0 bottom-0">
+                                    <canvas id="waterChart" class="absolute inset-0 w-full h-full z-10"></canvas>
+                                    <div id="x-axis-labels" class="absolute -bottom-8 left-0 w-full h-6 pointer-events-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="node-map-view" class="view-section hidden flex-col h-full pb-6">
+                    <h1 class="text-3xl font-medium tracking-tight text-white mb-8 shrink-0" data-i18n="title-map">Node Map</h1>
+                    <div id="map" class="bg-[#212233] rounded-[1.5rem] w-full flex-1 border border-white/5 shadow-sm overflow-hidden z-10 relative">
+                    </div>
+                </div>
+
+                <div id="history-view" class="view-section hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
+                        <h1 class="text-3xl font-medium tracking-tight text-white" data-i18n="title-history">History</h1>
+                        <button class="bg-[#212233] hover:bg-[#2A2C40] text-white px-5 py-2.5 rounded-full text-sm font-medium transition-colors border border-white/5 flex items-center gap-2 shadow-sm w-fit">
+                            <i data-lucide="download" class="w-4 h-4"></i> <span data-i18n="btn-export">Export Excel</span>
+                        </button>
+                    </div>
+                    <div class="bg-[#212233] rounded-[1.5rem] p-7 shadow-sm overflow-x-auto">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr class="border-b border-[#8E8F9F]/20 text-sm text-[#8E8F9F]">
+                                    <th class="pb-4 font-medium" data-i18n="th-date">Date &amp; Time</th>
+                                    <th class="pb-4 font-medium" data-i18n="th-province">Province</th>
+                                    <th class="pb-4 font-medium" data-i18n="th-node">Node ID</th>
+                                    <th class="pb-4 font-medium" data-i18n="th-level">Water Level</th>
+                                    <th class="pb-4 font-medium" data-i18n="th-status">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm text-white" id="history-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="settings-view" class="view-section hidden">
+                    <h1 class="text-3xl font-medium tracking-tight text-white mb-8" data-i18n="title-settings">Settings</h1>
+                    <div class="max-w-xl">
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 shadow-sm">
+                            <h2 class="text-xl font-medium text-white mb-6" data-i18n="title-sys-config">System Configuration</h2>
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-[#8E8F9F] mb-2" data-i18n="lbl-threshold">Flood Alert Threshold (cm)</label>
+                                <input type="number" value="450" class="w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#6B4DFF]/50 transition-colors shadow-inner">
+                            </div>
+                            <button class="bg-[#6B4DFF] hover:bg-[#5A3EE0] text-white px-6 py-3 rounded-full text-sm font-medium transition-colors w-full sm:w-auto shadow-[0_4px_14px_rgba(107,77,255,0.3)]" data-i18n="btn-save">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="script.js"></script>
+</body>
+</html>

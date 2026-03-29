@@ -1,0 +1,33 @@
+/* Custom Fonts */
+body { 
+    font-family: 'Inter', sans-serif; 
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #212233; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2A2C40; }
+
+/* CSS cho Marker Bản đồ (Chấm tròn chứa số liệu) */
+.custom-map-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    border: 2px solid white;
+    transition: transform 0.2s ease-in-out;
+}
+.custom-map-marker:hover {
+    transform: scale(1.15);
+    z-index: 1000 !important;
+}
+
+/* Các mức cảnh báo màu sắc */
+.marker-safe { background-color: #20C997; }   /* Xanh: An toàn (< 2.5m) */
+.marker-warning { background-color: #F59E0B; } /* Vàng: Cảnh báo (>= 2.5m) */
+.marker-danger { background-color: #FF4757; }  /* Đỏ: Nguy hiểm (>= 4.0m) */

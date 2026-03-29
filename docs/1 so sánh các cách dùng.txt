@@ -1,0 +1,14 @@
+1.so sánh các cách dùng thư viện hoặc dùng hardware để đo time phản xạ
+2. Giải pháp Lai (Hybrid) – Cấu hình ở Server nhưng Xử lý tại Hardware.
+    Để có một đồ án hoàn hảo, bạn hãy thiết kế hệ thống hoạt động theo nguyên tắc sau:
+
+    Giao diện Web/App (Server): Tạo một ô nhập liệu để người quản lý nhập "Nguy cơ ngập" (Ví dụ: nguong_canh_bao: 100). Thông số này được lưu trên Firebase.
+
+    Đồng bộ xuống ESP32 (Hardware): Khi ESP32 vừa khởi động (có Wi-Fi), nó sẽ lập tức kết nối Firebase và tải cái số 100 này về, lưu tạm vào RAM hoặc bộ nhớ Flash (NVS) của nó.
+
+    Quyết định tại chỗ (Edge Processing): Trong vòng lặp while(1) của ESP32, nó sẽ lấy số đo cảm biến so sánh với con số 100 đang lưu trong RAM.
+
+    Nếu nước > 100: ESP32 tự động bật đèn/còi ngay lập tức.
+
+    Sau đó, nó mới làm nhiệm vụ báo cáo (đẩy chữ "Nguy hiểm" lên Firebase).
+3. 
