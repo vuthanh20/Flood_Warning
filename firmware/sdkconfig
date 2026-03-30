@@ -1,0 +1,13 @@
+# Tăng bộ nhớ cho Task chính để tránh Stack Overflow khi chạy HTTPS
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+
+# Bật gói chứng chỉ bảo mật toàn cầu (Bắt buộc cho Firebase)
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+CONFIG_MBEDTLS_CERTIFICATE_BUNDLE_DEFAULT_FULL=y
+
+# Cho phép HTTP Client hỗ trợ HTTPS
+CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y
+
+# (Tùy chọn) Cấu hình sẵn WiFi nếu dùng thư viện example_connect
+CONFIG_EXAMPLE_WIFI_SSID="P502"
+CONFIG_EXAMPLE_WIFI_PASSWORD="55555555"
