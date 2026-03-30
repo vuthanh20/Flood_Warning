@@ -1,5 +1,5 @@
 #include "measure_setup.h"
-#include "push_setup.h"
+#include "firebase_setup.h"
 
 void app_main(void) {
     // 1. Khởi động hệ thống đo lường (Cảm biến, Lọc nhiễu)
