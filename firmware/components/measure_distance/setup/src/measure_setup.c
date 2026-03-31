@@ -22,7 +22,12 @@ static bool s_data_valid = false;
 static SemaphoreHandle_t s_data_mutex = NULL;
 
 static void measure_task(void *pvParameters) {
-    hc_sr04_rmt_config_t hc_cfg = { .trig_gpio = 18, .echo_gpio = 19, .rmt_resolution_hz = 1000000, .max_distance_cm = 400 };
+    hc_sr04_rmt_config_t hc_cfg = {
+        .trig_gpio = 25, 
+        .echo_gpio = 26, 
+        .rmt_resolution_hz = 1000000, 
+        .max_distance_cm = 400 
+    };
     hc_sr04_rmt_init(&hc_cfg);
 
     aht2x_config_t aht_cfg = { .i2c_port = I2C_NUM_0, .sda_pin = 21, .scl_pin = 22 };
