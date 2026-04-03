@@ -21,15 +21,17 @@ esp_err_t firebase_push_data(const char* db_url, int muc_nuoc, const char* trang
         return ESP_FAIL;
     }
 
-    // 2. Cấu hình HTTP Client kèm chứng chỉ SSL bảo mật
+    // 2. Cấu hình HTTP Client (MỞ RỘNG TÚI CHỨA TX LÊN 4096 BYTE)
     esp_http_client_config_t config = {
         .url = db_url,
         .transport_type = HTTP_TRANSPORT_OVER_SSL,
         .crt_bundle_attach = esp_crt_bundle_attach, 
+        .buffer_size = 2048,   // Túi hứng phản hồi
+        .buffer_size_tx = 4096 // <--- SỬA THÀNH 4096 ĐỂ ĐỰNG VỪA TOKEN KHỔNG LỒ
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
 
-    // Dùng PATCH để cập nhật dữ liệu thay vì ghi đè mất nhánh cũ
+    // Dùng PATCH để cập nhật dữ liệu
     esp_http_client_set_method(client, HTTP_METHOD_PATCH);
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_http_client_set_post_field(client, post_data, strlen(post_data));

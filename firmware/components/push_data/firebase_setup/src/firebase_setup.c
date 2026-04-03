@@ -142,7 +142,44 @@ bool firebase_login() {
     return login_success;
 }
 
-// === LUỒNG LÀM VIỆC CHÍNH ===
+// // === LUỒNG LÀM VIỆC CHÍNH ===
+// static void firebase_task(void *pvParameters) {
+//     while (!firebase_login()) {
+//         ESP_LOGW(TAG, "Đăng nhập thất bại, thử lại sau 5 giây...");
+//         vTaskDelay(pdMS_TO_TICKS(5000));
+//     }
+
+//     char current_url[2560];
+//     sprintf(current_url, "%s/nodes/%s/telemetry.json?auth=%s", FIREBASE_HOST, NODE_ID, id_token);
+
+//     while (1) {
+//         float wl_send = 0.0f;
+//         char stat_send[20];
+
+//         if (measure_get_latest_data(&wl_send, stat_send)) {
+//             ESP_LOGI(TAG, "Bắn Firebase -> Nước: %.1f cm", wl_send);
+//             firebase_push_data(current_url, wl_send, stat_send); 
+//         }
+//         vTaskDelay(pdMS_TO_TICKS(15000));
+//     }
+// }
+
+// void push_setup_init(void) {
+//     esp_err_t ret = nvs_flash_init();
+//     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+//       ESP_ERROR_CHECK(nvs_flash_erase());
+//       ret = nvs_flash_init();
+//     }
+//     ESP_ERROR_CHECK(ret);
+
+//     wifi_init_sta();
+//     xTaskCreate(firebase_task, "firebase_task", 20480, NULL, 4, NULL);
+// }
+
+extern float shared_mock_wl;
+extern char shared_mock_status[20];
+
+// === LUỒNG LÀM VIỆC CHÍNH (ĐÃ SỬA ĐỂ ĐỌC DỮ LIỆU ẢO) ===
 static void firebase_task(void *pvParameters) {
     while (!firebase_login()) {
         ESP_LOGW(TAG, "Đăng nhập thất bại, thử lại sau 5 giây...");
@@ -153,13 +190,15 @@ static void firebase_task(void *pvParameters) {
     sprintf(current_url, "%s/nodes/%s/telemetry.json?auth=%s", FIREBASE_HOST, NODE_ID, id_token);
 
     while (1) {
-        float wl_send = 0.0f;
+        // Lấy số liệu ảo trực tiếp từ biến toàn cục của main.c
+        float wl_send = shared_mock_wl; 
         char stat_send[20];
+        strcpy(stat_send, shared_mock_status);
 
-        if (measure_get_latest_data(&wl_send, stat_send)) {
-            ESP_LOGI(TAG, "Bắn Firebase -> Nước: %.1f cm", wl_send);
-            firebase_push_data(current_url, wl_send, stat_send); 
-        }
+        // Bắn lên Firebase
+        ESP_LOGI(TAG, "Bắn Firebase (DỮ LIỆU ẢO) -> Nước: %.1f cm", wl_send);
+        firebase_push_data(current_url, wl_send, stat_send); 
+        
         vTaskDelay(pdMS_TO_TICKS(15000));
     }
 }

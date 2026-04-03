@@ -152,14 +152,20 @@
                     <h1 class="text-3xl font-medium tracking-tight text-white mb-8" data-i18n="title-dashboard">Dashboard</h1>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
-                            <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
-                                <i data-lucide="triangle-alert" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                        <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center justify-between shadow-sm">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
+                                    <i data-lucide="bell" id="alert-icon" class="w-6 h-6 text-[#8E8F9F]" stroke-width="1.5"></i>
+                                </div>
+                                <div>
+                                    <div class="text-2xl font-medium tracking-tight text-[#8E8F9F] mb-0.5" id="alert-status-text">OFF</div>
+                                    <div class="text-sm text-[#8E8F9F]" data-i18n="kpi-alerts">Alert Control</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-alerts-val">0</div>
-                                <div class="text-base text-[#8E8F9F]" data-i18n="kpi-alerts">Active Alerts</div>
-                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="alert-toggle" class="sr-only peer">
+                                <div class="w-14 h-7 bg-[#151622] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[#FF4757]"></div>
+                            </label>
                         </div>
 
                         <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
@@ -266,16 +272,37 @@
 
                 <div id="settings-view" class="view-section hidden">
                     <h1 class="text-3xl font-medium tracking-tight text-white mb-8" data-i18n="title-settings">Settings</h1>
-                    <div class="max-w-xl">
-                        <div class="bg-[#212233] rounded-[1.5rem] p-7 shadow-sm">
-                            <h2 class="text-xl font-medium text-white mb-6" data-i18n="title-sys-config">System Configuration</h2>
-                            <div class="mb-6">
-                                <label class="block text-sm font-medium text-[#8E8F9F] mb-2" data-i18n="lbl-threshold">Flood Alert Threshold (cm)</label>
-                                <input type="number" value="450" class="w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#6B4DFF]/50 transition-colors shadow-inner">
+                    <div class="max-w-xl bg-[#212233] rounded-[1.5rem] p-7 shadow-sm border border-[#F59E0B]/20">
+                        <h2 class="text-xl font-medium text-white mb-6 flex items-center gap-2">
+                            <i data-lucide="sliders" class="w-5 h-5 text-[#F59E0B]"></i>
+                            <span data-i18n="title-sys-config">Threshold Configuration</span>
+                        </h2>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-[#8E8F9F] mb-2" data-i18n="lbl-select-node">Select Node to Configure</label>
+                            <div class="relative">
+                                <select id="settings-node-select" class="appearance-none w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#6B4DFF]/50 transition-colors shadow-inner">
+                                    </select>
+                                <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
                             </div>
-                            <button class="bg-[#6B4DFF] hover:bg-[#5A3EE0] text-white px-6 py-3 rounded-full text-sm font-medium transition-colors w-full sm:w-auto shadow-[0_4px_14px_rgba(107,77,255,0.3)]" data-i18n="btn-save">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-6">
+                            <div>
+                                <label class="block text-sm font-medium text-[#8E8F9F] mb-2 text-[#F59E0B]" data-i18n="lbl-warn-threshold">Warning Threshold (cm)</label>
+                                <input type="number" id="input-warn-thresh" value="25" class="w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#F59E0B]/50 transition-colors shadow-inner">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-[#8E8F9F] mb-2 text-[#FF4757]" data-i18n="lbl-danger-threshold">Danger Threshold (cm)</label>
+                                <input type="number" id="input-danger-thresh" value="40" class="w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#FF4757]/50 transition-colors shadow-inner">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <button id="btn-save-settings" class="bg-[#6B4DFF] hover:bg-[#5A3EE0] text-white px-6 py-3 rounded-full text-sm font-medium transition-colors w-full sm:w-auto shadow-[0_4px_14px_rgba(107,77,255,0.3)]" data-i18n="btn-save">
                                 Save Changes
                             </button>
+                            <p id="settings-success-msg" class="text-[#20C997] text-sm hidden font-medium" data-i18n="msg-saved">Saved successfully!</p>
                         </div>
                     </div>
                 </div>
