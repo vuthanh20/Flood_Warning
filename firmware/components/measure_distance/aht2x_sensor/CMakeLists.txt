@@ -1,1 +1,0 @@
-idf_component_register(SRCS "src/aht2x_sensor.c" INCLUDE_DIRS "include" REQUIRES driver)
