@@ -51,9 +51,9 @@ let waterChart = new Chart(ctx, {
             borderWidth: 3,
             fill: true,
             tension: 0.4, 
-            pointRadius: 5,         // Hiện rõ chấm tròn
+            pointRadius: 5,         
             pointHoverRadius: 7,
-            pointBackgroundColor: [], // Mảng màu động sẽ được đắp vào đây
+            pointBackgroundColor: [], 
             pointBorderColor: []
         }]
     },
@@ -63,37 +63,46 @@ let waterChart = new Chart(ctx, {
         animation: false, 
         plugins: { legend: { display: false }, tooltip: { enabled: true } },
         scales: {
-            x: { display: false }, 
+            x: { 
+                display: true, 
+                grid: { display: false, drawBorder: false }, 
+                ticks: { 
+                    color: '#8E8F9F', 
+                    maxTicksLimit: 6, 
+                    maxRotation: 0, 
+                    minRotation: 0,
+                    font: { size: 11 }
+                }
+            }, 
             y: { display: false, min: 0 } 
         },
         layout: { padding: 0 }
     }
 });
 
+const xAxisLabelsContainer = document.getElementById('x-axis-labels');
+if (xAxisLabelsContainer) xAxisLabelsContainer.style.display = 'none';
+
 
 // ==========================================
 // 4. LẮNG NGHE NGƯỠNG CẢNH BÁO TỪ CÀI ĐẶT
 // ==========================================
-let nodeThresholds = {}; // Lưu cấu hình của mọi trạm
-let alertSettings = {}; // Lưu trạng thái nút gạt
+let nodeThresholds = {}; 
+let alertSettings = {}; 
 
-// Lấy dữ liệu ngưỡng cảnh báo từ Firebase
 db.ref('nguong_canh_bao').on('value', (snapshot) => {
     nodeThresholds = snapshot.val() || {};
     
-    // Cập nhật lại màn hình Cài đặt nếu đang mở
     const settingsNodeSelect = document.getElementById('settings-node-select');
     if(settingsNodeSelect && document.getElementById('settings-view').classList.contains('block')) {
         loadThresholdsForSettings();
     }
     
-    // Cập nhật lại Biểu đồ & Lịch sử để nhận màu mới ngay lập tức
     const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
-    const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : 'all';
-    renderChartAndTable(currentProvSelected, currentNodeSelected);
+    const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+    if(currentNodeSelected) renderChartAndTable(currentProvSelected, currentNodeSelected);
 });
 
-// Xử lý nút lưu trong tab Cài Đặt
 const settingsNodeSelect = document.getElementById('settings-node-select');
 const inputWarn = document.getElementById('input-warn-thresh');
 const inputDanger = document.getElementById('input-danger-thresh');
@@ -151,8 +160,8 @@ if(btnSaveSettings) {
 function startAlertListener() {
     db.ref('canh_bao').on('value', (snapshot) => {
         alertSettings = snapshot.val() || {};
-        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : 'all';
-        updateAlertToggleUI(currentNodeSelected);
+        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+        if(currentNodeSelected) updateAlertToggleUI(currentNodeSelected);
     });
 }
 startAlertListener();
@@ -161,14 +170,9 @@ function updateAlertToggleUI(nodeId) {
     const toggle = document.getElementById('alert-toggle');
     const statusText = document.getElementById('alert-status-text');
     const alertIcon = document.getElementById('alert-icon');
-    if(!toggle || !statusText || !alertIcon) return;
+    if(!toggle || !statusText || !alertIcon || !nodeId) return;
 
-    let isAlertOn = false;
-    if (nodeId === 'all') {
-        isAlertOn = Object.values(alertSettings).some(n => n && n.trang_thai === true);
-    } else {
-        isAlertOn = alertSettings[nodeId] && alertSettings[nodeId].trang_thai === true;
-    }
+    let isAlertOn = alertSettings[nodeId] && alertSettings[nodeId].trang_thai === true;
 
     if(toggle.checked !== isAlertOn) toggle.checked = isAlertOn;
     
@@ -186,15 +190,8 @@ const alertToggleInput = document.getElementById('alert-toggle');
 if (alertToggleInput) {
     alertToggleInput.addEventListener('change', (e) => {
         const isChecked = e.target.checked;
-        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : 'all';
-
-        if (currentNodeSelected === 'all') {
-            let updates = {};
-            for (const province in nodesData) {
-                nodesData[province].forEach(node => { updates[`canh_bao/${node.id}/trang_thai`] = isChecked; });
-            }
-            db.ref().update(updates);
-        } else {
+        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+        if (currentNodeSelected) {
             db.ref(`canh_bao/${currentNodeSelected}/trang_thai`).set(isChecked);
         }
     });
@@ -202,10 +199,9 @@ if (alertToggleInput) {
 
 
 // ==========================================
-// 6. MAP & KPI TỔNG
+// 6. MAP, KPI & THEO DÕI OFFLINE
 // ==========================================
 function updateMapMarker(nodeId, displayName, lat, lng, waterLevel) {
-    // Lấy ngưỡng của riêng trạm này, nếu chưa cài thì mặc định 25 và 40
     let w_thresh = (nodeThresholds[nodeId] && nodeThresholds[nodeId].canh_bao !== undefined) ? nodeThresholds[nodeId].canh_bao : 25;
     let d_thresh = (nodeThresholds[nodeId] && nodeThresholds[nodeId].nguy_hiem !== undefined) ? nodeThresholds[nodeId].nguy_hiem : 40;
 
@@ -233,27 +229,44 @@ function updateMapMarker(nodeId, displayName, lat, lng, waterLevel) {
 let latestLevels = {};
 
 function updateKPIs(selectedProv, selectedNodeId) {
-    let totalWater = 0;
-    let count = 0;
+    if (!selectedNodeId) return;
 
-    if (selectedNodeId === 'all') {
-        for (let k in latestLevels) {
-            let nodeProv = getProvinceForNode(k);
-            if (selectedProv === 'all' || nodeProv === selectedProv) {
-                totalWater += latestLevels[k];
-                count++;
-            }
-        }
-        let avgWater = count > 0 ? (totalWater / count).toFixed(1) : 0;
-        const waterKpi = document.getElementById('kpi-water-val');
-        if (waterKpi) waterKpi.innerText = avgWater;
-    } else {
-        let level = latestLevels[selectedNodeId] !== undefined ? latestLevels[selectedNodeId] : "--";
-        const waterKpi = document.getElementById('kpi-water-val');
-        if (waterKpi) waterKpi.innerText = level;
-    }
+    let level = latestLevels[selectedNodeId] !== undefined ? latestLevels[selectedNodeId] : "--";
+    const waterKpi = document.getElementById('kpi-water-val');
+    if (waterKpi) waterKpi.innerText = level;
+    
     updateAlertToggleUI(selectedNodeId);
+    updateSensorKPI(); 
 }
+
+function updateSensorKPI() {
+    const selectedNodeId = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+    const lang = document.getElementById('lang-switch') ? document.getElementById('lang-switch').value : 'en';
+    const sensorVal = document.getElementById('kpi-sensors-val');
+    const sensorIcon = document.getElementById('kpi-sensors-icon');
+
+    if (!selectedNodeId || !sensorVal || !sensorIcon) return;
+
+    let now = new Date().getTime();
+    let isOnline = false;
+    
+    let nodeRecords = globalHistoryData.filter(r => r.nodeId === selectedNodeId);
+    if (nodeRecords.length > 0) {
+        let lastRecord = nodeRecords[nodeRecords.length - 1];
+        if ((now - lastRecord.timestamp) <= 120000) { 
+            isOnline = true;
+        }
+    }
+
+    let text = isOnline ? (lang === 'en' ? "Online" : "Hoạt động") : (lang === 'en' ? "Offline" : "Mất K.nối");
+    sensorVal.innerText = text;
+    sensorVal.className = `text-3xl font-medium tracking-tight mb-0.5 ${isOnline ? 'text-[#20C997]' : 'text-[#FF4757]'}`;
+    
+    let colorClass = isOnline ? 'text-[#20C997]' : 'text-[#FF4757]';
+    sensorIcon.setAttribute('class', `w-6 h-6 ${colorClass} lucide lucide-cpu`);
+}
+
+setInterval(updateSensorKPI, 5000);
 
 function startLiveMapAndKPIs() {
     for (const province in nodesData) {
@@ -270,8 +283,10 @@ function startLiveMapAndKPIs() {
                 updateMapMarker(node.id, displayName, coords.lat, coords.lng, data.muc_nuoc);
 
                 const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
-                const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : 'all';
-                updateKPIs(currentProvSelected, currentNodeSelected);
+                const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+                if(currentNodeSelected === node.id) {
+                    updateKPIs(currentProvSelected, currentNodeSelected);
+                }
             });
         });
     }
@@ -280,7 +295,7 @@ startLiveMapAndKPIs();
 
 
 // ==========================================
-// 7. RENDER BẢNG LỊCH SỬ & BIỂU ĐỒ MÀU SẮC
+// 7. RENDER BẢNG LỊCH SỬ & BIỂU ĐỒ THEO TRẠM CỤ THỂ
 // ==========================================
 let globalHistoryData = [];
 
@@ -299,6 +314,17 @@ function getProvinceForNode(nodeId) {
     return "Unknown";
 }
 
+function parseCustomDate(timeStr) {
+    try {
+        let parts = timeStr.split(" - ");
+        let timeParts = parts[0].split(":");
+        let dateParts = parts[1].split("/");
+        return new Date(dateParts[2], dateParts[1]-1, dateParts[0], timeParts[0], timeParts[1], timeParts[2]).getTime();
+    } catch(e) {
+        return new Date().getTime();
+    }
+}
+
 function startHistoryListener() {
     db.ref('lich_su').on('value', (snapshot) => {
         const data = snapshot.val();
@@ -310,6 +336,13 @@ function startHistoryListener() {
             Object.keys(nodeData).forEach(key => {
                 let record = nodeData[key];
                 record.nodeId = nId;
+                
+                if (record.thoi_gian_rtc && !record.timestamp) {
+                    record.timestamp = parseCustomDate(record.thoi_gian_rtc);
+                } else if (!record.timestamp) {
+                    record.timestamp = new Date().getTime(); 
+                }
+                
                 allRecords.push(record);
             });
         });
@@ -318,38 +351,38 @@ function startHistoryListener() {
         globalHistoryData = allRecords;
 
         const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
-        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : 'all';
-        renderChartAndTable(currentProvSelected, currentNodeSelected);
+        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+        if(currentNodeSelected) {
+            renderChartAndTable(currentProvSelected, currentNodeSelected);
+            updateSensorKPI(); 
+        }
     });
 }
 startHistoryListener();
 
+
 function renderChartAndTable(selectedProv, selectedNodeId) {
-    if (!globalHistoryData.length) return;
+    if (!globalHistoryData.length || !selectedNodeId) return;
     let lang = document.getElementById('lang-switch').value;
 
-    let filteredTableRecords = globalHistoryData.filter(record => {
-        let nodeProv = getProvinceForNode(record.nodeId);
-        let matchProv = (selectedProv === 'all' || nodeProv === selectedProv);
-        let matchNode = (selectedNodeId === 'all' || record.nodeId === selectedNodeId);
-        return matchProv && matchNode;
-    });
-
+    // --- 1. RENDER BẢNG (Chỉ cho trạm được chọn) ---
+    let filteredTableRecords = globalHistoryData.filter(record => record.nodeId === selectedNodeId);
     let tableRecords = filteredTableRecords.slice(-100);
     let tableHtml = '';
     
     for (let i = tableRecords.length - 1; i >= 0; i--) {
         let record = tableRecords[i];
-        let dateObj = new Date(record.timestamp);
-        let timeString = dateObj.getHours().toString().padStart(2, '0') + ':' + 
-                         dateObj.getMinutes().toString().padStart(2, '0') + ':' + 
-                         dateObj.getSeconds().toString().padStart(2, '0');
+        
+        let timeString = record.thoi_gian_rtc; 
+        if (!timeString) {
+            let dateObj = new Date(record.timestamp);
+            timeString = dateObj.getHours().toString().padStart(2, '0') + ':' + dateObj.getMinutes().toString().padStart(2, '0');
+        }
 
         let nodeProv = getProvinceForNode(record.nodeId);
         let displayProv = (lang === 'en') ? removeDiacritics(nodeProv) : nodeProv;
         let displayName = getNodeName(record.nodeId, lang);
         
-        // ĐỔI MÀU BẢNG THEO NGƯỠNG CÀI ĐẶT MỚI THAY VÌ CHỮ TĨNH
         let w_thresh = (nodeThresholds[record.nodeId] && nodeThresholds[record.nodeId].canh_bao !== undefined) ? nodeThresholds[record.nodeId].canh_bao : 25;
         let d_thresh = (nodeThresholds[record.nodeId] && nodeThresholds[record.nodeId].nguy_hiem !== undefined) ? nodeThresholds[record.nodeId].nguy_hiem : 40;
         
@@ -364,7 +397,7 @@ function renderChartAndTable(selectedProv, selectedNodeId) {
 
         tableHtml += `
             <tr class="border-b border-[#8E8F9F]/10 hover:bg-white/5 transition-colors">
-                <td class="py-4">${timeString}</td>
+                <td class="py-4 whitespace-nowrap">${timeString}</td>
                 <td class="py-4 font-medium text-[#8E8F9F]">${displayProv}</td>
                 <td class="py-4">${displayName}</td>
                 <td class="py-4 text-[#20C997] font-medium">${record.muc_nuoc}</td>
@@ -375,86 +408,85 @@ function renderChartAndTable(selectedProv, selectedNodeId) {
     const tableBody = document.getElementById('history-table-body');
     if(tableBody) tableBody.innerHTML = tableHtml;
 
-    // RENDER BIỂU ĐỒ ĐA MÀU
-    if (selectedNodeId === 'all') {
-        waterChart.data.labels = [];
-        waterChart.data.datasets[0].data = [];
-        waterChart.update('none');
-        
-        const y4 = document.getElementById('y-label-4');
-        const y3 = document.getElementById('y-label-3');
-        const y2 = document.getElementById('y-label-2');
-        if (y4) y4.innerText = "6m";
-        if (y3) y3.innerText = "4m";
-        if (y2) y2.innerText = "2m";
-    } else {
-        let chartRecords = globalHistoryData.filter(r => r.nodeId === selectedNodeId).slice(-50);
-        
-        let times = [];
-        let levels = [];
-        let pointColors = [];
+    // --- 2. RENDER BIỂU ĐỒ (Chỉ cho trạm được chọn) ---
+    const chartTimeSelect = document.getElementById('chart-time-select');
+    const timeRange = chartTimeSelect ? chartTimeSelect.value : '24h';
+    
+    let now = new Date().getTime();
+    let cutoffTime = 0;
+    if (timeRange === '12h') cutoffTime = now - 12 * 3600 * 1000;
+    else if (timeRange === '24h') cutoffTime = now - 24 * 3600 * 1000;
+    else if (timeRange === '1w') cutoffTime = now - 7 * 24 * 3600 * 1000;
+    else if (timeRange === '1m') cutoffTime = now - 30 * 24 * 3600 * 1000;
 
-        let w_thresh = (nodeThresholds[selectedNodeId] && nodeThresholds[selectedNodeId].canh_bao !== undefined) ? nodeThresholds[selectedNodeId].canh_bao : 25;
-        let d_thresh = (nodeThresholds[selectedNodeId] && nodeThresholds[selectedNodeId].nguy_hiem !== undefined) ? nodeThresholds[selectedNodeId].nguy_hiem : 40;
+    let chartRecords = filteredTableRecords.filter(r => r.timestamp >= cutoffTime).slice(-50); 
+    
+    let times = [];
+    let levels = [];
+    let pointColors = [];
 
-        chartRecords.forEach(record => {
-            let dateObj = new Date(record.timestamp);
-            let timeString = dateObj.getHours().toString().padStart(2, '0') + ':' + 
-                             dateObj.getMinutes().toString().padStart(2, '0') + ':' + 
-                             dateObj.getSeconds().toString().padStart(2, '0');
-            times.push(timeString);
-            levels.push(record.muc_nuoc);
+    let w_thresh = (nodeThresholds[selectedNodeId] && nodeThresholds[selectedNodeId].canh_bao !== undefined) ? nodeThresholds[selectedNodeId].canh_bao : 25;
+    let d_thresh = (nodeThresholds[selectedNodeId] && nodeThresholds[selectedNodeId].nguy_hiem !== undefined) ? nodeThresholds[selectedNodeId].nguy_hiem : 40;
 
-            // LOGIC MÀU SẮC CHO CHẤM TRÒN THEO NGƯỠNG CỦA TRẠM NÀY
-            if (record.muc_nuoc >= d_thresh) pointColors.push('#FF4757'); // Đỏ
-            else if (record.muc_nuoc >= w_thresh) pointColors.push('#F59E0B'); // Vàng
-            else pointColors.push('#20C997'); // Xanh lá
-        });
+    chartRecords.forEach(record => {
+        let chartTimeLabel = "";
+        if (record.thoi_gian_rtc) {
+            let parts = record.thoi_gian_rtc.split(" - ");
+            if(parts.length === 2) chartTimeLabel = [parts[0], parts[1]]; 
+            else chartTimeLabel = record.thoi_gian_rtc;
+        }
 
-        let maxDataLevel = levels.length > 0 ? Math.max(...levels) : 6;
-        let maxLevel = Math.max(maxDataLevel, 6); 
-        maxLevel = Math.ceil(maxLevel / 3) * 3;
+        times.push(chartTimeLabel);
+        levels.push(record.muc_nuoc);
 
-        const y4 = document.getElementById('y-label-4');
-        const y3 = document.getElementById('y-label-3');
-        const y2 = document.getElementById('y-label-2');
+        if (record.muc_nuoc >= d_thresh) pointColors.push('#FF4757'); 
+        else if (record.muc_nuoc >= w_thresh) pointColors.push('#F59E0B'); 
+        else pointColors.push('#20C997'); 
+    });
 
-        if (y4) y4.innerText = maxLevel;
-        if (y3) y3.innerText = parseFloat((maxLevel * 2 / 3).toFixed(1));
-        if (y2) y2.innerText = parseFloat((maxLevel / 3).toFixed(1));
+    let maxDataLevel = levels.length > 0 ? Math.max(...levels) : 6;
+    let maxLevel = Math.max(maxDataLevel, 6); 
+    maxLevel = Math.ceil(maxLevel / 3) * 3;
 
-        waterChart.options.scales.y.max = maxLevel;
-        waterChart.data.labels = times;
-        waterChart.data.datasets[0].data = levels;
-        
-        // Cập nhật mảng màu và làm đường kẻ mờ đi để làm nổi bật chấm màu
-        waterChart.data.datasets[0].pointBackgroundColor = pointColors;
-        waterChart.data.datasets[0].pointBorderColor = pointColors;
-        waterChart.data.datasets[0].borderColor = '#8E8F9F'; 
-        
-        waterChart.update('none'); 
-    }
+    const y4 = document.getElementById('y-label-4');
+    const y3 = document.getElementById('y-label-3');
+    const y2 = document.getElementById('y-label-2');
+
+    if (y4) y4.innerText = maxLevel;
+    if (y3) y3.innerText = parseFloat((maxLevel * 2 / 3).toFixed(1));
+    if (y2) y2.innerText = parseFloat((maxLevel / 3).toFixed(1));
+
+    waterChart.options.scales.y.max = maxLevel;
+    waterChart.data.labels = times;
+    waterChart.data.datasets[0].data = levels;
+    
+    waterChart.data.datasets[0].pointBackgroundColor = pointColors;
+    waterChart.data.datasets[0].pointBorderColor = pointColors;
+    waterChart.data.datasets[0].borderColor = '#8E8F9F'; 
+    
+    waterChart.update('none'); 
+}
+
+const chartTimeSelect = document.getElementById('chart-time-select');
+if(chartTimeSelect) {
+    chartTimeSelect.addEventListener('change', (e) => {
+        const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
+        const currentNodeSelected = document.getElementById('node-select') ? document.getElementById('node-select').value : null;
+        if(currentNodeSelected) renderChartAndTable(currentProvSelected, currentNodeSelected);
+    });
 }
 
 
 // ==========================================
 // 8. ĐIỀU HƯỚNG VÀ NGÔN NGỮ
 // ==========================================
-function updateSensorCount() {
-    let totalNodes = 0;
-    for (const province in nodesData) totalNodes += nodesData[province].length;
-    const sensorKpi = document.getElementById('kpi-sensors-val');
-    if(sensorKpi) sensorKpi.innerText = totalNodes;
-}
-updateSensorCount();
-
 const i18n = {
     en: {
         "nav-dashboard": "Dashboard", "nav-history": "History", "nav-map": "Node Map", "nav-settings": "Settings",
-        "opt-all-prov": "All Provinces", "opt-all-nodes": "All Nodes",
+        "opt-all-prov": "All Provinces",
         "lang-en": "English", "lang-vi": "Vietnamese",
         "title-dashboard": "Dashboard", "title-history": "History", "title-map": "Node Map", "title-settings": "Settings",
-        "kpi-alerts": "Alert Control", "kpi-water": "Current Level", "kpi-rain": "24h Rainfall", "kpi-sensors": "Active Sensors",
+        "kpi-alerts": "Alert Control", "kpi-water": "Current Level", "kpi-rain": "24h Rainfall", "kpi-sensors": "Sensor Status",
         "chart-title": "Water Level Trends", 
         "chart-12h": "12 hours", "chart-24h": "24 hours", "chart-1w": "1 week", "chart-1m": "1 month",
         "btn-export": "Export Data", "th-date": "Date & Time", "th-province": "Province", "th-node": "Node ID", "th-level": "Water Level",
@@ -465,10 +497,10 @@ const i18n = {
     },
     vi: {
         "nav-dashboard": "Bảng Điều Khiển", "nav-history": "Lịch Sử", "nav-map": "Bản Đồ Trạm", "nav-settings": "Cài Đặt",
-        "opt-all-prov": "Tất Cả Tỉnh Thành", "opt-all-nodes": "Tất Cả Trạm",
+        "opt-all-prov": "Tất Cả Tỉnh Thành",
         "lang-en": "Tiếng Anh", "lang-vi": "Tiếng Việt",
         "title-dashboard": "Bảng Điều Khiển", "title-history": "Lịch Sử", "title-map": "Bản Đồ Trạm", "title-settings": "Cài Đặt",
-        "kpi-alerts": "Bật/Tắt Cảnh Báo", "kpi-water": "Mực Nước", "kpi-rain": "Lượng Mưa 24h", "kpi-sensors": "Số Cảm Biến",
+        "kpi-alerts": "Bật/Tắt Cảnh Báo", "kpi-water": "Mực Nước Hiện Tại", "kpi-rain": "Lượng Mưa 24h", "kpi-sensors": "Trạng Thái Cảm Biến",
         "chart-title": "Xu Hướng Mực Nước", 
         "chart-12h": "12 giờ", "chart-24h": "24 giờ", "chart-1w": "1 tuần", "chart-1m": "1 tháng",
         "btn-export": "Xuất Dữ Liệu", "th-date": "Ngày & Giờ", "th-province": "Tỉnh Thành", "th-node": "Mã Trạm", "th-level": "Mực Nước",
@@ -517,67 +549,14 @@ navLinks.forEach(link => {
     });
 });
 
-const chartTimeSelect = document.getElementById('chart-time-select');
-const xAxisLabelsContainer = document.getElementById('x-axis-labels');
-
-function updateChartXAxis(timeRange, lang) {
-    if(!xAxisLabelsContainer) return;
-    xAxisLabelsContainer.innerHTML = '';
-    const points = 5;
-    const nowText = lang === 'en' ? 'Now' : 'Hiện tại';
-    let maxVal = 0; let unit = 'h';
-    
-    if (timeRange === '12h') { maxVal = 12; unit = 'h'; }
-    else if (timeRange === '24h') { maxVal = 24; unit = 'h'; }
-    else if (timeRange === '1w') { maxVal = 7; unit = 'd'; }
-    else if (timeRange === '1m') { maxVal = 30; unit = 'd'; }
-    
-    const step = maxVal / (points - 1);
-
-    for (let i = 0; i < points; i++) {
-        const percent = i * 25;
-        let labelText = '';
-        
-        if (i === points - 1) {
-            labelText = nowText;
-        } else {
-            const timeVal = maxVal - (step * i);
-            const formattedTime = Number.isInteger(timeVal) ? timeVal : timeVal.toFixed(1);
-            const displayUnit = (unit === 'd' && lang === 'vi') ? ' ngày' : (unit === 'd' ? 'd' : 'h');
-            labelText = `-${formattedTime}${displayUnit}`;
-        }
-
-        const span = document.createElement('span');
-        span.className = 'absolute top-2 text-sm text-[#8E8F9F]';
-        span.style.left = `${percent}%`;
-        span.innerText = labelText;
-        
-        if(i === 0) span.style.transform = 'translate(0, 0)'; 
-        else if(i === points - 1) span.style.transform = 'translate(-100%, 0)'; 
-        else span.style.transform = 'translate(-50%, 0)'; 
-
-        xAxisLabelsContainer.appendChild(span);
-    }
-}
-
-if(chartTimeSelect) {
-    chartTimeSelect.addEventListener('change', (e) => {
-        updateChartXAxis(e.target.value, document.getElementById('lang-switch').value);
-    });
-}
-
 const nodeSelect = document.getElementById('node-select');
 const langSwitch = document.getElementById('lang-switch');
 const provinceSelect = document.getElementById('province-select');
 
+// XÓA MỤC ALL NODES
 function updateNodeDropdown(provinceVal, lang) {
     if(!nodeSelect) return;
     nodeSelect.innerHTML = ''; 
-
-    const allNodesOpt = document.createElement('option');
-    allNodesOpt.value = 'all';
-    allNodesOpt.innerText = lang === 'en' ? 'All Nodes' : 'Tất Cả Trạm';
-    nodeSelect.appendChild(allNodesOpt);
 
     let nodesToShow = [];
     if (provinceVal === 'all') {
@@ -595,9 +574,26 @@ function updateNodeDropdown(provinceVal, lang) {
         nodeSelect.appendChild(opt);
     });
 
-    const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
-    renderChartAndTable(currentProvSelected, nodeSelect.value);
-    updateKPIs(currentProvSelected, nodeSelect.value);
+    if (nodesToShow.length > 0) {
+        // Tự động chọn trạm đầu tiên trong danh sách
+        nodeSelect.value = nodesToShow[0].id;
+        const currentProvSelected = document.getElementById('province-select') ? document.getElementById('province-select').value : 'all';
+        renderChartAndTable(currentProvSelected, nodeSelect.value);
+        updateKPIs(currentProvSelected, nodeSelect.value);
+    } else {
+        waterChart.data.labels = [];
+        waterChart.data.datasets[0].data = [];
+        waterChart.update('none');
+        
+        const tb = document.getElementById('history-table-body');
+        if(tb) tb.innerHTML = '';
+        
+        const waterKpi = document.getElementById('kpi-water-val');
+        if (waterKpi) waterKpi.innerText = '--';
+        
+        const sensorVal = document.getElementById('kpi-sensors-val');
+        if (sensorVal) sensorVal.innerText = '--';
+    }
 }
 
 if (nodeSelect) {
@@ -638,10 +634,6 @@ function updateLanguage(lang) {
         updateNodeDropdown(provinceSelect.value, lang);
     }
     
-    if(chartTimeSelect) {
-        updateChartXAxis(chartTimeSelect.value, lang);
-    }
-
     populateSettingsDropdown(lang);
 }
 

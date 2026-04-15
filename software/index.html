@@ -190,10 +190,10 @@
 
                         <div class="bg-[#212233] rounded-[1.5rem] p-7 flex items-center gap-5 shadow-sm">
                             <div class="w-14 h-14 rounded-2xl bg-[#151622] flex items-center justify-center shrink-0">
-                                <i data-lucide="cpu" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
+                                <i data-lucide="cpu" id="kpi-sensors-icon" class="w-6 h-6 text-[#6B4DFF]" stroke-width="1.5"></i>
                             </div>
                             <div>
-                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-sensors-val">0</div>
+                                <div class="text-3xl font-medium tracking-tight text-white mb-0.5" id="kpi-sensors-val">0/0</div>
                                 <div class="text-base text-[#8E8F9F]" data-i18n="kpi-sensors">Active Sensors</div>
                             </div>
                         </div>
@@ -232,8 +232,6 @@
                                 
                                 <div class="absolute inset-0 ml-8 top-0 bottom-0">
                                     <canvas id="waterChart" class="absolute inset-0 w-full h-full z-10"></canvas>
-                                    <div id="x-axis-labels" class="absolute -bottom-8 left-0 w-full h-6 pointer-events-none">
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -282,7 +280,7 @@
                             <label class="block text-sm font-medium text-[#8E8F9F] mb-2" data-i18n="lbl-select-node">Select Node to Configure</label>
                             <div class="relative">
                                 <select id="settings-node-select" class="appearance-none w-full bg-[#151622] border border-white/5 rounded-xl px-4 py-3 text-base text-white focus:outline-none focus:border-[#6B4DFF]/50 transition-colors shadow-inner">
-                                    </select>
+                                </select>
                                 <iconify-icon icon="solar:alt-arrow-down-linear" class="absolute right-4 top-1/2 -translate-y-1/2 text-[#8E8F9F] pointer-events-none text-base"></iconify-icon>
                             </div>
                         </div>
