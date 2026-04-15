@@ -1,5 +1,5 @@
 # Flood Warning System: Water Level Monitoring and Web-Based Analysis
-![Cover Image](overview.jpg)
+![Cover Image](resources/images/overview.jpg)
 
 *Project Developer: Vu Thanh*
 
@@ -15,7 +15,7 @@ The main objective of this study is to develop a flood monitoring and early warn
 * Developing an operational warning system utilizing local hardware alerts and a web dashboard for disaster preparedness.
 
 ## System Architecture
-![System Architecture](block_diagram.jpg)
+![System Architecture](resources/images/block_diagram.jpg)
 *Figure 1: System Architecture of the Flood Warning System*
 
 The architecture of the Flood Warning System involves three functional layers:
@@ -24,7 +24,7 @@ The architecture of the Flood Warning System involves three functional layers:
 3. **Output Data Block:** The processed information is transmitted to a Web Dashboard for data visualization, while a local Alert Warning subsystem (utilizing a buzzer and LED) is activated when critical thresholds are reached.
 
 ## Schematic Circuit Diagram
-![Schematic Diagram](schematic.jpg)
+![Schematic Diagram](resources/images/schematic.jpg)
 *Figure 2: Schematic Circuit Diagram of the Device*
 
 The hardware implementation is built around the ESP32-DEVKITC-32D board, which interfaces directly with the peripheral modules. The microcontroller processes the sensor data to determine if a flood warning should be issued. The electrical schematic ensures stable power routing and accurate signal processing across the I2C bus (for the AHT21 and DS3231 modules) and GPIO pins (for the HC-SR04 and Buzzer).
