@@ -5,8 +5,8 @@
 #define I2C_MASTER_PORT I2C_NUM_0
 #define DS3231_ADDR     0x68    // Địa chỉ I2C của DS3231
 
-#define I2C_MASTER_SDA_IO 21    // Thay đổi nếu dùng chân khác
-#define I2C_MASTER_SCL_IO 22    // Thay đổi nếu dùng chân khác
+#define I2C_MASTER_SDA_IO 25    // Đã đổi sang 25
+#define I2C_MASTER_SCL_IO 26    // Đã đổi sang 26
 #define I2C_MASTER_FREQ_HZ 100000
 
 // Hàm phụ trợ: Chuyển đổi BCD (Binary-Coded Decimal) sang Decimal và ngược lại

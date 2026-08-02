@@ -1,4 +1,4 @@
-/* Custom Fonts */
+﻿/* Custom Fonts */
 body { 
     font-family: 'Inter', sans-serif; 
 }
@@ -8,6 +8,450 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #212233; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #2A2C40; }
+
+/* ========================================== */
+/*  CSS CUSTOM PROPERTIES – DARK/LIGHT THEME   */
+/* ========================================== */
+:root {
+    --bg-deep: #151622;
+    --bg-card: rgba(33, 34, 51, 0.65);
+    --bg-card-solid: #212233;
+    --bg-input: #151622;
+    --text-main: #ffffff;
+    --text-dim: #8E8F9F;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-sidebar: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    --sidebar-bg: rgba(33, 34, 51, 0.7);
+    --hover-row: rgba(255, 255, 255, 0.05);
+    --accent: #6B4DFF;
+    --success: #20C997;
+    --warning: #F59E0B;
+    --danger: #FF4757;
+    --blob-opacity: 0.12;
+    --glass-blur: blur(18px);
+    --glass-blur-sidebar: blur(22px);
+    --tile-layer: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+}
+/* Auto light by OS preference – user toggle overrides via data-theme */
+@media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+        --bg-deep: #F2F2F7;
+        --bg-card: rgba(255, 255, 255, 0.72);
+        --bg-card-solid: #FFFFFF;
+        --bg-input: #FFFFFF;
+        --text-main: #1C1C1E;
+        --text-dim: #6E6E73;
+        --border-subtle: rgba(0, 0, 0, 0.08);
+        --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        --shadow-sidebar: 0 10px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        --sidebar-bg: rgba(255, 255, 255, 0.68);
+        --hover-row: rgba(0, 0, 0, 0.03);
+        --blob-opacity: 0.18;
+        --glass-blur: blur(24px);
+        --glass-blur-sidebar: blur(28px);
+        --tile-layer: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+    }
+}
+[data-theme="light"] {
+    --bg-deep: #F2F2F7;
+    --bg-card: rgba(255, 255, 255, 0.72);
+    --bg-card-solid: #FFFFFF;
+    --bg-input: #FFFFFF;
+    --text-main: #1C1C1E;
+    --text-dim: #6E6E73;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --shadow-sidebar: 0 10px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    --sidebar-bg: rgba(255, 255, 255, 0.68);
+    --hover-row: rgba(0, 0, 0, 0.03);
+    --blob-opacity: 0.18;
+    --glass-blur: blur(24px);
+    --glass-blur-sidebar: blur(28px);
+    --tile-layer: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+}
+[data-theme="dark"] {
+    --bg-deep: #151622;
+    --bg-card: rgba(33, 34, 51, 0.65);
+    --bg-card-solid: #212233;
+    --bg-input: #151622;
+    --text-main: #ffffff;
+    --text-dim: #8E8F9F;
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-sidebar: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    --sidebar-bg: rgba(33, 34, 51, 0.7);
+    --hover-row: rgba(255, 255, 255, 0.05);
+    --blob-opacity: 0.12;
+    --glass-blur: blur(18px);
+    --glass-blur-sidebar: blur(22px);
+    --tile-layer: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+}
+
+/* ========================================== */
+/*  LIQUID GLASS BACKGROUND                    */
+/* ========================================== */
+.liquid-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+.liquid-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: var(--blob-opacity);
+    animation: liquidFloat 20s ease-in-out infinite;
+}
+.liquid-blob:nth-child(1) {
+    background: #6B4DFF;
+    width: 600px;
+    height: 600px;
+    top: -15%;
+    left: -8%;
+    animation-delay: 0s;
+}
+.liquid-blob:nth-child(2) {
+    background: #20C997;
+    width: 450px;
+    height: 450px;
+    bottom: -12%;
+    right: -6%;
+    animation-delay: -7s;
+}
+.liquid-blob:nth-child(3) {
+    background: #F59E0B;
+    width: 350px;
+    height: 350px;
+    top: 45%;
+    left: 55%;
+    animation-delay: -14s;
+}
+@keyframes liquidFloat {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25%  { transform: translate(40px, -50px) scale(1.12); }
+    50%  { transform: translate(-25px, 30px) scale(0.92); }
+    75%  { transform: translate(-35px, -25px) scale(1.06); }
+}
+
+/* ========================================== */
+/*  ANTIGRAVITY FLOATING SHAPES                */
+/* ========================================== */
+.antigravity-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    perspective: 1200px;
+}
+.float-shape {
+    position: absolute;
+    will-change: transform;
+    animation: floatAnim 14s ease-in-out infinite;
+}
+.float-shape:nth-child(1) { /* Purple circle */
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, rgba(107,77,255,0.25), transparent 70%);
+    top: 8%; left: 5%;
+    animation-delay: 0s;
+    animation-duration: 16s;
+}
+.float-shape:nth-child(2) { /* Teal rounded square */
+    width: 130px; height: 130px;
+    border-radius: 28px;
+    background: radial-gradient(circle at 60% 30%, rgba(32,201,151,0.22), transparent 70%);
+    top: 55%; right: 8%;
+    animation-delay: -4s;
+    animation-duration: 13s;
+}
+.float-shape:nth-child(3) { /* Amber triangle-ish blob */
+    width: 100px; height: 140px;
+    border-radius: 42% 58% 38% 62% / 56% 43% 57% 44%;
+    background: radial-gradient(circle at 30% 50%, rgba(245,158,11,0.2), transparent 70%);
+    top: 30%; left: 50%;
+    animation-delay: -8s;
+    animation-duration: 18s;
+}
+.float-shape:nth-child(4) { /* Purple small octagon */
+    width: 90px; height: 90px;
+    border-radius: 20px;
+    background: radial-gradient(circle at 50% 40%, rgba(107,77,255,0.28), transparent 70%);
+    top: 70%; left: 18%;
+    animation-delay: -3s;
+    animation-duration: 15s;
+    transform: rotate(45deg);
+}
+.float-shape:nth-child(5) { /* Small green circle */
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, rgba(32,201,151,0.3), transparent 70%);
+    top: 15%; right: 20%;
+    animation-delay: -10s;
+    animation-duration: 11s;
+}
+.float-shape:nth-child(6) { /* Purple-red blob bottom right */
+    width: 160px; height: 160px;
+    border-radius: 35% 65% 45% 55% / 50% 45% 55% 50%;
+    background: radial-gradient(circle at 35% 45%, rgba(107,77,255,0.18), transparent 65%);
+    bottom: 5%; right: 18%;
+    animation-delay: -6s;
+    animation-duration: 20s;
+}
+@keyframes floatAnim {
+    0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+    20%  { transform: translate(25px, -35px) rotate(8deg) scale(1.08); }
+    40%  { transform: translate(-15px, 20px) rotate(-5deg) scale(0.94); }
+    60%  { transform: translate(-30px, -15px) rotate(3deg) scale(1.05); }
+    80%  { transform: translate(20px, 30px) rotate(-8deg) scale(0.96); }
+}
+
+/* ========================================== */
+/*  GLASS CARDS (backdrop-filter blur)         */
+/* ========================================== */
+.glass-card {
+    background: var(--bg-card) !important;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-card);
+}
+.glass-sidebar {
+    background: var(--sidebar-bg) !important;
+    backdrop-filter: var(--glass-blur-sidebar);
+    -webkit-backdrop-filter: var(--glass-blur-sidebar);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-sidebar);
+}
+
+/* Light-mode fixes for Tailwind dark utility classes on glass elements */
+[data-theme="light"] .glass-card .bg-\[\#151622\],
+[data-theme="light"] .glass-sidebar .bg-\[\#151622\] {
+    background: var(--bg-deep) !important;
+}
+[data-theme="light"] .glass-card .text-white,
+[data-theme="light"] .glass-sidebar .text-white {
+    color: var(--text-main) !important;
+}
+[data-theme="light"] .glass-card .text-\[\#8E8F9F\],
+[data-theme="light"] .glass-sidebar .text-\[\#8E8F9F\] {
+    color: var(--text-dim) !important;
+}
+
+/* ========================================== */
+/*  MOUSE TILT (Parallax 3D on cards)          */
+/* ========================================== */
+.tilt-card {
+    transform-style: preserve-3d;
+    perspective: 800px;
+    transition: box-shadow 0.3s ease;
+}
+.tilt-card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 60px rgba(107, 77, 255, 0.08);
+}
+
+/* ========================================== */
+/*  PAGE TRANSITIONS                           */
+/* ========================================== */
+.view-section {
+    transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.view-section.view-enter {
+    opacity: 0;
+    transform: translateY(14px);
+}
+.view-section.view-active {
+    opacity: 1;
+    transform: translateY(0);
+}
+.view-section.view-exit {
+    opacity: 0;
+    transform: translateY(-10px);
+    pointer-events: none;
+}
+
+/* ========================================== */
+/*  PULSE RING on danger map markers           */
+/* ========================================== */
+.custom-map-marker {
+    position: relative;
+}
+.custom-map-marker.marker-danger-pulse::after,
+.custom-map-marker.marker-warning-pulse::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: -1;
+}
+.custom-map-marker.marker-danger-pulse::after {
+    animation: pulseRingDanger 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.custom-map-marker.marker-warning-pulse::after {
+    animation: pulseRingWarn 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulseRingDanger {
+    0%   { box-shadow: 0 0 0 4px rgba(255, 71, 87, 0.5); }
+    100% { box-shadow: 0 0 0 24px rgba(255, 71, 87, 0); }
+}
+@keyframes pulseRingWarn {
+    0%   { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4); }
+    100% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); }
+}
+
+/* ========================================== */
+/*  KUN MASCOT                                 */
+/* ========================================== */
+.kun-mascot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    width: 64px;
+    height: 64px;
+    animation: kunBreathe 3s ease-in-out infinite;
+    filter: drop-shadow(0 0 18px rgba(107, 77, 255, 0.45));
+}
+.kun-mascot svg {
+    width: 100%;
+    height: 100%;
+}
+@keyframes kunBreathe {
+    0%, 100% { transform: scale(1); }
+    50%  { transform: scale(1.08); }
+}
+/* Glow pulse on the outer ring */
+.kun-mascot::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: transparent;
+    box-shadow: 0 0 30px rgba(107, 77, 255, 0.25);
+    animation: kunGlow 2s ease-in-out infinite;
+    z-index: -1;
+}
+@keyframes kunGlow {
+    0%, 100% { opacity: 0.5; transform: scale(1); }
+    50%  { opacity: 1; transform: scale(1.15); }
+}
+
+/* ========================================== */
+/*  THEME TOGGLE BUTTON                        */
+/* ========================================== */
+.theme-toggle {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    overflow: hidden;
+}
+.theme-toggle:hover {
+    box-shadow: 0 4px 16px rgba(107, 77, 255, 0.2);
+    border-color: rgba(107, 77, 255, 0.3);
+}
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon {
+    position: absolute;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+    font-size: 20px;
+}
+/* Dark mode: show sun (switch to light), hide moon */
+[data-theme="dark"] .theme-toggle .icon-sun { 
+    transform: translateY(0) rotate(0deg); 
+    opacity: 1; 
+}
+[data-theme="dark"] .theme-toggle .icon-moon { 
+    transform: translateY(30px) rotate(90deg); 
+    opacity: 0; 
+}
+/* Light mode: show moon (switch to dark), hide sun */
+[data-theme="light"] .theme-toggle .icon-sun { 
+    transform: translateY(-30px) rotate(-90deg); 
+    opacity: 0; 
+}
+[data-theme="light"] .theme-toggle .icon-moon { 
+    transform: translateY(0) rotate(0deg); 
+    opacity: 1; 
+}
+
+/* ========================================== */
+/*  LIGHT MODE OVERRIDES for non-glass elem    */
+/* ========================================== */
+[data-theme="light"] body {
+    background: var(--bg-deep) !important;
+    color: var(--text-dim) !important;
+}
+/* Select dropdowns in header */
+[data-theme="light"] select.bg-\[\#212233\] {
+    background: var(--bg-card-solid) !important;
+    color: var(--text-main) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+[data-theme="light"] select.bg-\[\#151622\] {
+    background: #F0F0F5 !important;
+    color: var(--text-main) !important;
+}
+/* Flag circle */
+[data-theme="light"] .bg-\[\#212233\].rounded-full {
+    background: var(--bg-card-solid) !important;
+}
+/* Export button */
+[data-theme="light"] #btn-export-data {
+    background: var(--bg-card-solid) !important;
+    color: var(--text-main) !important;
+    border-color: rgba(0,0,0,0.1) !important;
+}
+[data-theme="light"] #btn-export-data:hover {
+    background: #F0F0F5 !important;
+}
+/* Table hover */
+[data-theme="light"] table tr.hover\:bg-white\/5:hover {
+    background: var(--hover-row) !important;
+}
+/* Nav link hover */
+[data-theme="light"] .nav-link.hover\:bg-white\/5:hover {
+    background: rgba(0,0,0,0.04) !important;
+}
+/* Input fields in settings */
+[data-theme="light"] input.bg-\[\#151622\] {
+    background: #F0F0F5 !important;
+    color: var(--text-main) !important;
+}
+[data-theme="light"] input.bg-\[\#151622\]:focus {
+    background: #FFFFFF !important;
+}
+
+/* ========================================== */
+/*  LIGHT MODE – reduced motion               */
+/* ========================================== */
+@media (prefers-reduced-motion: reduce) {
+    .liquid-blob,
+    .float-shape,
+    .kun-mascot,
+    .kun-mascot::after,
+    .custom-map-marker.marker-danger-pulse::after,
+    .custom-map-marker.marker-warning-pulse::after {
+        animation-duration: 0s !important;
+        animation: none !important;
+    }
+    .view-section {
+        transition: none !important;
+    }
+}
 
 /* CSS cho Marker Bản đồ (Chấm tròn chứa số liệu) */
 .custom-map-marker {
@@ -28,6 +472,6 @@ body {
 }
 
 /* Các mức cảnh báo màu sắc */
-.marker-safe { background-color: #20C997; }   /* Xanh: An toàn (< 2.5m) */
-.marker-warning { background-color: #F59E0B; } /* Vàng: Cảnh báo (>= 2.5m) */
-.marker-danger { background-color: #FF4757; }  /* Đỏ: Nguy hiểm (>= 4.0m) */
+.marker-safe { background-color: #20C997; }
+.marker-warning { background-color: #F59E0B; }
+.marker-danger { background-color: #FF4757; }

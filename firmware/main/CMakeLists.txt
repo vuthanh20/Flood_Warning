@@ -11,4 +11,5 @@ idf_component_register(SRCS "main.c"
                             firebase_client
                             hc_sr04_rmt
                             water_level_processor
-                            ds3231_rtc)
+                            ds3231_rtc
+                            ssd1306_oled)

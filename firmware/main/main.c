@@ -14,11 +14,15 @@
 #include "esp_http_client.h" 
 #include "esp_crt_bundle.h"
 #include "cJSON.h" 
+#include "esp_sntp.h"
+#include <time.h>
+#include <sys/time.h>
 
 #include "hc_sr04_rmt.h"
 #include "aht2x_sensor.h" 
 #include "water_level_processor.h"
 #include "ds3231_rtc.h" 
+#include "ssd1306_oled.h"
 
 static const char *TAG = "The_Hidden_Gems";
 
@@ -26,7 +30,7 @@ static const char *TAG = "The_Hidden_Gems";
 #define FIREBASE_HOST "https://flood-c8eda-default-rtdb.asia-southeast1.firebasedatabase.app"
 #define SENSOR_HEIGHT_CM 200.0f 
 
-#define BUZZER_PIN 4
+#define BUZZER_PIN 33
 #define BUZZER_ON  1 
 #define BUZZER_OFF 0  
 
@@ -102,6 +106,15 @@ void firebase_task(void *pvParameters) {
     ESP_LOGI(TAG, "[MẠNG] Đang kết nối Wi-Fi ngầm...");
     if (example_connect() == ESP_OK) {
         ESP_LOGI(TAG, "[MẠNG] Wi-Fi OK! Bắt đầu đồng bộ Firebase.");
+
+        // Khởi tạo đồng bộ thời gian SNTP
+        esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+        sntp_set_sync_mode(SNTP_SYNC_MODE_IMMED);
+        esp_sntp_setservername(0, "pool.ntp.org");
+        esp_sntp_setservername(1, "time.nist.gov");
+        esp_sntp_init();
+        setenv("TZ", "UTC-7", 1); // Timezone Việt Nam (UTC+7)
+        tzset();
     }
 
     sensor_data_t rx_data;
@@ -138,6 +151,36 @@ void firebase_task(void *pvParameters) {
                 }
             }
             last_sync_time = xTaskGetTickCount();
+        }
+
+        // Đồng bộ thời gian DS3231 từ NTP (Lần đầu và mỗi 12 tiếng)
+        static TickType_t last_ntp_sync = 0;
+        time_t now = 0;
+        struct tm timeinfo = { 0 };
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        
+        // now > 1600000000 means year > 2020 (NTP is synced)
+        if (now > 1600000000 && 
+            (last_ntp_sync == 0 || (xTaskGetTickCount() - last_ntp_sync >= pdMS_TO_TICKS(12 * 60 * 60 * 1000)))) {
+            
+            ds3231_time_t rtc_time;
+            rtc_time.year   = timeinfo.tm_year % 100;
+            rtc_time.month  = timeinfo.tm_mon + 1;
+            rtc_time.date   = timeinfo.tm_mday;
+            rtc_time.day    = timeinfo.tm_wday + 1;
+            rtc_time.hour   = timeinfo.tm_hour;
+            rtc_time.minute = timeinfo.tm_min;
+            rtc_time.second = timeinfo.tm_sec;
+            
+            if (ds3231_set_time(&rtc_time) == ESP_OK) {
+                ESP_LOGI(TAG, "RTC cap nhat tu NTP: %02d/%02d/20%02d %02d:%02d:%02d",
+                         rtc_time.date, rtc_time.month, rtc_time.year,
+                         rtc_time.hour, rtc_time.minute, rtc_time.second);
+                last_ntp_sync = xTaskGetTickCount() ? xTaskGetTickCount() : 1; // Đảm bảo khác 0
+            } else {
+                ESP_LOGW(TAG, "Loi ghi thoi gian xuong RTC!");
+            }
         }
 
         if (xQueueReceive(firebase_queue, &rx_data, pdMS_TO_TICKS(100)) == pdPASS) {
@@ -208,6 +251,29 @@ void sensor_task(void *pvParameters) {
             }
 
             bool is_alert = is_danger || is_warning;
+
+            ds3231_time_t rtc_now;
+            bool rtc_ok = (ds3231_get_time(&rtc_now) == ESP_OK);
+            
+            ssd1306_clear();
+            char oled_buf[32];
+            if (rtc_ok) {
+                sprintf(oled_buf, "%02d/%02d/20%02d %02d:%02d", rtc_now.date, rtc_now.month, rtc_now.year, rtc_now.hour, rtc_now.minute);
+            } else {
+                strcpy(oled_buf, "--/--/---- --:--");
+            }
+            ssd1306_draw_string(0, 0, oled_buf);
+            ssd1306_draw_hline(0, 10, 128);
+            
+            sprintf(oled_buf, "Muc nuoc: %.1f cm", current_water_level);
+            ssd1306_draw_string(0, 16, oled_buf);
+            
+            sprintf(oled_buf, "Nhiet do: %.1f C", temp_c);
+            ssd1306_draw_string(0, 28, oled_buf);
+            
+            ssd1306_draw_string(0, 44, current_status);
+            ssd1306_display();
+
             bool should_send = false;
             if (is_alert && !was_alert) should_send = true; 
             else if (is_alert && (xTaskGetTickCount() - last_sent_time >= ALERT_INTERVAL)) should_send = true; 
@@ -220,8 +286,7 @@ void sensor_task(void *pvParameters) {
                 strcpy(tx_data.status, current_status);
                 tx_data.buzzer_sync_cmd = sync_cmd; 
 
-                ds3231_time_t rtc_now;
-                if (ds3231_get_time(&rtc_now) == ESP_OK) {
+                if (rtc_ok) {
                     sprintf(tx_data.rtc_time, "%02d:%02d:%02d - %02d/%02d/20%02d",
                             rtc_now.hour, rtc_now.minute, rtc_now.second,
                             rtc_now.date, rtc_now.month, rtc_now.year);
@@ -254,16 +319,22 @@ void app_main(void) {
     gpio_set_direction(BUZZER_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(BUZZER_PIN, BUZZER_OFF);
 
-    hc_sr04_rmt_config_t hc_cfg = { .trig_gpio = 25, .echo_gpio = 26, .rmt_resolution_hz = 1000000, .max_distance_cm = 400 };
+    hc_sr04_rmt_config_t hc_cfg = { .trig_gpio = 18, .echo_gpio = 19, .rmt_resolution_hz = 1000000, .max_distance_cm = 400 };
     hc_sr04_rmt_init(&hc_cfg);
 
-    aht2x_config_t aht_cfg = { .i2c_port = I2C_NUM_0, .sda_pin = 21, .scl_pin = 22 };
+    aht2x_config_t aht_cfg = { .i2c_port = I2C_NUM_0, .sda_pin = 25, .scl_pin = 26 };
     aht2x_init(&aht_cfg);
 
     if (ds3231_init() == ESP_OK) {
         ESP_LOGI(TAG, "Khoi tao RTC DS3231 thanh cong!");
     } else {
         ESP_LOGE(TAG, "Loi khoi tao RTC DS3231!");
+    }
+
+    if (ssd1306_init(I2C_NUM_0, 0x3C) == ESP_OK) {
+        ESP_LOGI(TAG, "Khoi tao OLED SSD1306 thanh cong!");
+    } else {
+        ESP_LOGE(TAG, "Loi khoi tao OLED SSD1306!");
     }
 
     wl_processor_init(NULL);

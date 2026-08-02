@@ -206,11 +206,12 @@ function updateMapMarker(nodeId, displayName, lat, lng, waterLevel) {
     let d_thresh = (nodeThresholds[nodeId] && nodeThresholds[nodeId].nguy_hiem !== undefined) ? nodeThresholds[nodeId].nguy_hiem : 40;
 
     let bgColorClass = 'marker-safe';
-    if (waterLevel >= d_thresh) bgColorClass = 'marker-danger';
-    else if (waterLevel >= w_thresh) bgColorClass = 'marker-warning';
+    let pulseClass = '';
+    if (waterLevel >= d_thresh) { bgColorClass = 'marker-danger'; pulseClass = ' marker-danger-pulse'; }
+    else if (waterLevel >= w_thresh) { bgColorClass = 'marker-warning'; pulseClass = ' marker-warning-pulse'; }
 
     let numberIcon = L.divIcon({
-        className: `custom-map-marker ${bgColorClass}`,
+        className: 'custom-map-marker ' + bgColorClass + pulseClass,
         html: `<div>${waterLevel}</div>`,
         iconSize: [38, 38],
         iconAnchor: [19, 19]
@@ -228,12 +229,93 @@ function updateMapMarker(nodeId, displayName, lat, lng, waterLevel) {
 
 let latestLevels = {};
 
+// Rainfall cache: { nodeId: { total: number, updatedAt: timestamp } }
+let rainCache = {};
+const RAIN_CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+async function fetchRainfall(nodeId) {
+    const coords = nodeCoords[nodeId];
+    if (!coords) {
+        const el = document.getElementById('kpi-rain-val');
+        if (el) el.innerText = '-- mm';
+        return;
+    }
+
+    // Check cache
+    const cached = rainCache[nodeId];
+    if (cached && (Date.now() - cached.updatedAt) < RAIN_CACHE_TTL) {
+        updateRainDisplay(cached.total);
+        return;
+    }
+
+    try {
+        const url = 'https://api.open-meteo.com/v1/forecast'
+            + '?latitude=' + coords.lat
+            + '&longitude=' + coords.lng
+            + '&hourly=precipitation'
+            + '&past_days=1&forecast_days=0&timezone=auto';
+
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('API error ' + resp.status);
+        const data = await resp.json();
+
+        // Sum last 24 hours of precipitation (mm)
+        const hourly = data.hourly && data.hourly.precipitation;
+        if (!hourly || !hourly.length) {
+            updateRainDisplay(null);
+            return;
+        }
+
+        // Take the last 24 entries (last 24 hours)
+        const last24 = hourly.slice(-24);
+        const total = last24.reduce((sum, v) => sum + (v || 0), 0);
+        const rounded = Math.round(total * 10) / 10; // 1 decimal
+
+        rainCache[nodeId] = { total: rounded, updatedAt: Date.now() };
+        updateRainDisplay(rounded);
+    } catch (err) {
+        console.warn('Rainfall fetch failed for ' + nodeId + ':', err.message);
+        updateRainDisplay(null);
+    }
+}
+
+function updateRainDisplay(value) {
+    const el = document.getElementById('kpi-rain-val');
+    if (!el) return;
+    if (value === null || value === undefined) {
+        el.innerText = '-- mm';
+        el.className = 'text-3xl font-medium tracking-tight text-white mb-0.5';
+    } else {
+        el.innerText = value + ' mm';
+        // Color-code: heavy rain > 10mm → warning, > 0 → teal
+        if (value > 10) {
+            el.className = 'text-3xl font-medium tracking-tight text-[#F59E0B] mb-0.5';
+        } else if (value > 0) {
+            el.className = 'text-3xl font-medium tracking-tight text-[#20C997] mb-0.5';
+        } else {
+            el.className = 'text-3xl font-medium tracking-tight text-white mb-0.5';
+        }
+    }
+}
+
 function updateKPIs(selectedProv, selectedNodeId) {
     if (!selectedNodeId) return;
 
     let level = latestLevels[selectedNodeId] !== undefined ? latestLevels[selectedNodeId] : "--";
     const waterKpi = document.getElementById('kpi-water-val');
-    if (waterKpi) waterKpi.innerText = level;
+    if (waterKpi) {
+        let currentVal = parseFloat(waterKpi.innerText);
+        if (isNaN(currentVal)) currentVal = 0;
+        let newVal = parseFloat(level);
+        if (!isNaN(newVal)) {
+            animateValue(waterKpi, currentVal, newVal, 600);
+        } else {
+            waterKpi.innerText = level;
+        }
+    }
+    
+    // Fetch real-time rainfall from Open-Meteo
+    fetchRainfall(selectedNodeId);
     
     updateAlertToggleUI(selectedNodeId);
     updateSensorKPI(); 
@@ -478,6 +560,103 @@ if(chartTimeSelect) {
 
 
 // ==========================================
+// 7A. HIỆU ỨNG: TILT 3D & NUMBER COUNTING
+// ==========================================
+function animateValue(el, start, end, duration) {
+    if (start === end) { el.innerText = end; return; }
+    let startTime = null;
+    const step = (timestamp) => {
+        if (!startTime) startTime = timestamp;
+        const progress = Math.min((timestamp - startTime) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = start + (end - start) * eased;
+        el.innerText = Number.isInteger(end) ? Math.round(current) : current.toFixed(1);
+        if (progress < 1) requestAnimationFrame(step);
+        else el.innerText = end;
+    };
+    requestAnimationFrame(step);
+}
+
+function initTilt() {
+    const cards = document.querySelectorAll('.tilt-card');
+    cards.forEach(card => {
+        card.addEventListener('mousemove', (e) => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const cx = rect.width / 2;
+            const cy = rect.height / 2;
+            const rx = ((y - cy) / cy) * -5;
+            const ry = ((x - cx) / cx) * 5;
+            card.style.transition = 'transform 0.1s ease-out';
+            card.style.transform = 'perspective(800px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transition = 'transform 0.4s ease-out';
+            card.style.transform = 'perspective(800px) rotateX(0deg) rotateY(0deg)';
+        });
+    });
+}
+initTilt();
+
+
+// ==========================================
+// 7B. XUẤT DỮ LIỆU (EXPORT CSV)
+// ==========================================
+const btnExportData = document.getElementById('btn-export-data');
+if (btnExportData) {
+    btnExportData.addEventListener('click', () => {
+        if (!globalHistoryData || globalHistoryData.length === 0) {
+            const lang = document.getElementById('lang-switch') ? document.getElementById('lang-switch').value : 'en';
+            alert(lang === 'en' ? 'No data to export.' : 'Không có dữ liệu để xuất.');
+            return;
+        }
+
+        const lang = document.getElementById('lang-switch') ? document.getElementById('lang-switch').value : 'en';
+
+        // Build CSV with BOM for Excel UTF-8 compatibility
+        const BOM = '\uFEFF';
+        const headers = lang === 'en'
+            ? ['Date & Time', 'Province', 'Node ID', 'Water Level', 'Status']
+            : ['Ngày & Giờ', 'Tỉnh Thành', 'Mã Trạm', 'Mực Nước', 'Trạng Thái'];
+
+        let csv = BOM + headers.join(',') + '\n';
+
+        // Export ALL history data (sorted newest first for convenience)
+        const sortedData = [...globalHistoryData].sort((a, b) => b.timestamp - a.timestamp);
+
+        sortedData.forEach(record => {
+            const timeStr = record.thoi_gian_rtc || '';
+            const prov = getProvinceForNode(record.nodeId);
+            const displayProv = lang === 'en' ? removeDiacritics(prov) : prov;
+            const nodeName = getNodeName(record.nodeId, lang);
+            const level = record.muc_nuoc !== undefined ? record.muc_nuoc : '';
+            const status = record.trang_thai || '';
+
+            // Escape CSV values: wrap in double-quotes, double any internal quotes
+            const escapeCsv = (val) => '"' + String(val).replace(/"/g, '""') + '"';
+            csv += escapeCsv(timeStr) + ',' + escapeCsv(displayProv) + ',' + escapeCsv(nodeName) + ',' + escapeCsv(level) + ',' + escapeCsv(status) + '\n';
+        });
+
+        // Trigger download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const now = new Date();
+        const dateStr = now.getFullYear() + '-' +
+            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+            String(now.getDate()).padStart(2, '0');
+        a.download = 'flood-data-' + dateStr + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+}
+
+
+// ==========================================
 // 8. ĐIỀU HƯỚNG VÀ NGÔN NGỮ
 // ==========================================
 const i18n = {
@@ -520,16 +699,33 @@ navLinks.forEach(link => {
         const targetId = link.getAttribute('data-target');
         views.forEach(view => {
             if (view.id === targetId) {
-                view.classList.remove('hidden');
+                view.classList.remove('hidden', 'view-exit');
+                view.classList.add('view-enter');
+                view.classList.remove('view-active');
                 if(targetId === 'node-map-view') {
                     view.classList.add('flex');
-                    setTimeout(() => { map.invalidateSize(); }, 100); 
+                    view.classList.remove('block');
                 } else {
                     view.classList.add('block');
+                    view.classList.remove('flex');
                 }
-            } else {
-                view.classList.add('hidden');
-                view.classList.remove('block', 'flex');
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        view.classList.remove('view-enter');
+                        view.classList.add('view-active');
+                        if(targetId === 'node-map-view') {
+                            map.invalidateSize();
+                        }
+                    });
+                });
+            } else if (!view.classList.contains('hidden')) {
+                view.classList.add('view-exit');
+                view.classList.remove('view-active');
+                view.addEventListener('transitionend', function onExit() {
+                    view.removeEventListener('transitionend', onExit);
+                    view.classList.add('hidden');
+                    view.classList.remove('block', 'flex', 'view-exit');
+                }, { once: true });
             }
         });
 
@@ -591,6 +787,9 @@ function updateNodeDropdown(provinceVal, lang) {
         const waterKpi = document.getElementById('kpi-water-val');
         if (waterKpi) waterKpi.innerText = '--';
         
+        const rainV = document.getElementById('kpi-rain-val');
+        if (rainV) rainV.innerText = '-- mm';
+        
         const sensorVal = document.getElementById('kpi-sensors-val');
         if (sensorVal) sensorVal.innerText = '--';
     }
@@ -642,3 +841,150 @@ if(langSwitch) {
 }
 
 updateLanguage('en');
+
+
+// ==========================================
+// 9. THEME TOGGLE (Dark/Light)
+// ==========================================
+const themeToggle = document.getElementById('theme-toggle');
+const themeIconSun = document.getElementById('theme-icon-sun');
+const themeIconMoon = document.getElementById('theme-icon-moon');
+const htmlEl = document.documentElement;
+
+function setTheme(theme) {
+    htmlEl.setAttribute('data-theme', theme);
+    localStorage.setItem('kun-theme', theme);
+    if (themeIconSun && themeIconMoon) {
+        if (theme === 'light') {
+            themeIconSun.classList.remove('hidden');
+            themeIconMoon.classList.add('hidden');
+        } else {
+            themeIconSun.classList.add('hidden');
+            themeIconMoon.classList.remove('hidden');
+        }
+    }
+    // Update map tiles for theme
+    updateMapTiles(theme);
+}
+
+function updateMapTiles(theme) {
+    if (typeof map === 'undefined' || !map) return;
+    map.eachLayer(function(layer) {
+        if (layer instanceof L.TileLayer) {
+            map.removeLayer(layer);
+        }
+    });
+    const tileUrl = theme === 'light'
+        ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    L.tileLayer(tileUrl, {
+        attribution: '&copy; OpenStreetMap',
+        subdomains: 'abcd',
+        maxZoom: 20
+    }).addTo(map);
+}
+
+if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+        const current = htmlEl.getAttribute('data-theme') || 'dark';
+        setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+}
+
+// Restore saved theme
+const savedTheme = localStorage.getItem('kun-theme') || 'dark';
+setTheme(savedTheme);
+
+
+// ==========================================
+// 10. KUN MASCOT - Eye Tracking & Blink
+// ==========================================
+(function initMascot() {
+    const mascot = document.getElementById('kun-mascot');
+    if (!mascot) return;
+
+    const pupils = mascot.querySelectorAll('.kun-pupil');
+    const eyeLeft = mascot.querySelector('.kun-eye-left');
+    const eyeRight = mascot.querySelector('.kun-eye-right');
+
+    // Eye tracking
+    document.addEventListener('mousemove', (e) => {
+        if (!mascot.isConnected) return;
+        const mascotRect = mascot.getBoundingClientRect();
+        const mascotCX = mascotRect.left + mascotRect.width / 2;
+        const mascotCY = mascotRect.top + mascotRect.height / 2;
+        
+        const maxDist = 80;
+        const dx = Math.max(-maxDist, Math.min(maxDist, e.clientX - mascotCX));
+        const dy = Math.max(-maxDist, Math.min(maxDist, e.clientY - mascotCY));
+        
+        const px = (dx / maxDist) * 2.2;
+        const py = (dy / maxDist) * 2.2;
+        
+        pupils.forEach(pupil => {
+            pupil.setAttribute('transform', 'translate(' + px + ',' + py + ')');
+        });
+    });
+
+    // Blink animation
+    function blink() {
+        if (!mascot.isConnected) return;
+        if (eyeLeft) eyeLeft.style.transform = 'scaleY(0.1)';
+        if (eyeRight) eyeRight.style.transform = 'scaleY(0.1)';
+        setTimeout(() => {
+            if (eyeLeft) eyeLeft.style.transform = 'scaleY(1)';
+            if (eyeRight) eyeRight.style.transform = 'scaleY(1)';
+        }, 120);
+        // Schedule next blink (2-6 seconds)
+        setTimeout(blink, 2000 + Math.random() * 4000);
+    }
+    setTimeout(blink, 3000);
+
+    // Add transform-origin for blink
+    if (eyeLeft) eyeLeft.style.transformOrigin = 'center center';
+    if (eyeRight) eyeRight.style.transformOrigin = 'center center';
+    if (eyeLeft) eyeLeft.style.transition = 'transform 0.1s ease';
+    if (eyeRight) eyeRight.style.transition = 'transform 0.1s ease';
+})();
+
+
+// ==========================================
+// 11. ANTIGRAVITY - Mouse Parallax on Floating Shapes
+// ==========================================
+(function initAntigravity() {
+    const shapes = document.querySelectorAll('.float-shape');
+    if (!shapes.length) return;
+
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
+    let targetX = mouseX;
+    let targetY = mouseY;
+
+    document.addEventListener('mousemove', (e) => {
+        targetX = e.clientX;
+        targetY = e.clientY;
+    });
+
+    function animate() {
+        // Smooth follow
+        mouseX += (targetX - mouseX) * 0.05;
+        mouseY += (targetY - mouseY) * 0.05;
+
+        const cx = window.innerWidth / 2;
+        const cy = window.innerHeight / 2;
+        const relX = (mouseX - cx) / cx; // -1 to 1
+        const relY = (mouseY - cy) / cy;
+
+        shapes.forEach((shape, i) => {
+            const speed = (i + 1) * 0.15;
+            const depth = 0.4 + (i % 3) * 0.3;
+            const tx = relX * 40 * depth * speed;
+            const ty = relY * 40 * depth * speed;
+            const rot = relX * 8 * depth * (i % 2 === 0 ? 1 : -1);
+            shape.style.transform = 'translate(' + tx + 'px,' + ty + 'px) rotate(' + rot + 'deg)';
+        });
+
+        requestAnimationFrame(animate);
+    }
+    requestAnimationFrame(animate);
+})();
